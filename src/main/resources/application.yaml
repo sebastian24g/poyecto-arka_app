@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: arka
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/app-arka
+    username: postgres
+    password: 1234
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: arkastorenotification@gmail.com
+    password: mtmb abku ikdn bfll
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: postgres
+    password: 1234
+
+  cloud:
+    function:
+      definition: paymentAcceptedEventListener
+    stream:
+      bindings:
+        paymentAcceptedEventListener-in-0:
+          destination: payment.accepted.exchange
+          content-type: application/json
+          group: notification-service-group
+          consumer:
+            max-attempts: 3
+            back-off-initial-interval: 1000
+            back-off-max-interval: 10000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: busrefresh
+
+server:
+  port: 8085

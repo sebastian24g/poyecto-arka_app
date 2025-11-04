@@ -1,0 +1,79 @@
+name: 🚀 CI - Build & Test Arka App (Java 21 + PostgreSQL)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    name: 🧱 Build, Test & Package
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        ports: ['5432:5432']
+        env:
+          POSTGRES_DB: arka_db
+          POSTGRES_USER: arka_user
+          POSTGRES_PASSWORD: arka_pass
+        options: >-
+          --health-cmd "pg_isready -U arka_user"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/arka_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_PROFILES_ACTIVE: test
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
+
+    steps:
+      # 1️⃣ Clonar el repositorio
+      - name: 🧩 Checkout source code
+        uses: actions/checkout@v4
+
+      # 2️⃣ Configurar Java 21 (Temurin)
+      - name: ☕ Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      # 3️⃣ Verificar permisos de Gradle Wrapper
+      - name: 🔧 Grant execute permission for Gradle wrapper
+        run: chmod +x gradlew
+
+      # 4️⃣ Esperar a que PostgreSQL esté listo
+      - name: ⏳ Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U arka_user; do
+            echo "⏳ Waiting for PostgreSQL to start..."
+            sleep 3
+          done
+
+      # 5️⃣ Compilar y ejecutar pruebas
+      - name: 🧪 Build & Run Tests
+        run: ./gradlew clean build --info
+
+      # 6️⃣ Publicar resultados de pruebas
+      - name: 📊 Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: build/reports/tests/test
+
+      # 7️⃣ Publicar el artefacto .jar compilado
+      - name: 📦 Upload JAR artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arka-app-jar
+          path: build/libs/*.jar
